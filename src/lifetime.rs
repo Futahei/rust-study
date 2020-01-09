@@ -98,5 +98,46 @@ let x: &'static i32 = &FOO;
 // これはバイナリのデータセグメントに i32 を焼き付けることを意味する。
 
 
+// ライフタイムの省略を行うこともできる
+// Rustは強力なローカル型推論をサポートしている。しかし要素の構造を表すときは、
+// 型が要素の構造だけでわかるように型推論が許されていない。
+// しかし、ライフタイムの推論はサポートされている。
+// それらは３つの明確なルールに従って行われる。
 
+// 入力ライフタイム：関数の引数に関連するライフタイム
+fn foo<'a>(bar: &'a str) { }
+// 出力ライフタイム：関数の戻り値に関連するライフタイム
+fn foo<'a>() -> &'a str { }
+
+// ルール1. 関数の引数の中の省略された各ライフタイムは互いに異なるライフタイムパラメータになる
+// ルール2. もし入力ライフタイムが１つだけならば、省略されたかどうかに関わらず、
+//          そのライフタイムはその関数の戻り値の中の省略されたライフタイム全てに割り当てられる
+// ルール3. もし入力ライフタイムが複数あるが、その１つが &self または &mut self であれば、
+//          self のライフタイムは省略された出力ライフタイム全てに割り当てられる
+// これらに該当しない時は、出力ライフタイムの省略はエラーとなる
+
+// 以下にライフタイムの省略された形と展開された形の例を示す
+fn print(s: &str);
+fn print<'a>(s: &'a str);
+
+fn debug(lvl: u32, s: &str);
+fn debug<'a>(lvl: u32, s: &'a str);
+// 上記の lvl がライフタイムを必要としない。なぜなら参照(または参照を含むもの)ではないから。
+
+fn substr(s: &str, until: u32) -> &str;
+fn substr<'a>(s: &'a str, until: u32) -> &'a str;
+
+fn get_str() -> &str; // 不正。入力がない
+
+fn frob(s: &str, t: &str) -> &str;
+fn frob<'a, 'b>(s: &'a str, t: &'b str) -> &str; // 出力ライフタイムが決まらない
+
+fn get_mut(&mut self) -> &mut T;
+fn get_mut<'a>(&'a mut self) -> &'a mut T;
+
+fn args<T: ToCStr>(&mut self, args: &[T]) -> &mut Command;
+fn args<'a, 'b, T:ToCStr>(&'a mut self, args: &'b [T]) -> &'a mut Command;
+
+fn new(buf: &mut [u8]) -> BufWriter;
+fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>;
 
